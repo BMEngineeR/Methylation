@@ -29,11 +29,25 @@ for(i in 1:length(my.filelist)){
 }
 # separate condtion and group
 my.sample.condition<-read.table("../sample_condition.txt",header = T)
+my.sample.condition$Group<-paste0(my.sample.condition$Disease,".",my.sample.condition$NAME)
 my.sample.condition.2<-my.sample.condition[match(gsub("MAA","",my.filename),my.sample.condition$NAME),]
-my.group<-my.sample.condition.2$Disease
+my.group<-my.sample.condition.2$Group
 my.methylation.cov.list<-list(MAA4130,MAA4308,MAA4382,MAA4414,MAA4494,MAA4617,MAA4660,MAA4788,MAA4807,MAA5190)
-
+# checkpoint
+save(my.methylation.cov.list,file = "my.methylation.cov.list")
+load("my.methylation.cov.list")
 my.object<-makeBSseqData(my.methylation.cov.list,my.group)
+# RRBS does not recommend smoothing process
+my.normal<-my.group[grep("^Normal",my.group)]
+my.alzheimer<-my.group[grep("^Al",my.group)]
+DMLTest<- DMLtest(my.object,group1 = my.normal,group2 = my.alzheimer)
+dmls <-callDML(DMLTest,p.threshold = 0.05)
+dmrs <- callDMR(DMLTest,p.threshold = 0.05)
+
+
+
+
+
 
 
 
