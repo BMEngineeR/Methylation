@@ -2,8 +2,11 @@ if (!require(DSS)){
   BiocManager::install("DSS")
 }
 require(bsseq)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+library(genomation)
 options(stringsAsFactors = F)
-setwd("/home/cyz/Bigstore/BigData/analysis_work/Amer/Amer_run/Sorted_BAM/coverage_file/")
+setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Amer_Fastq/coverage_meth")
 # prepressing file, they contain alternative chromosome
 # my.filelist<-list.files(pattern = "cov.gz")
 # my.filename<-unlist(lapply(strsplit(my.filelist,"_"),"[",1))
@@ -37,20 +40,27 @@ my.methylation.cov.list<-list(MAA4130,MAA4308,MAA4382,MAA4414,MAA4494,MAA4617,MA
 save(my.methylation.cov.list,file = "my.methylation.cov.list")
 load("my.methylation.cov.list")
 my.object<-makeBSseqData(my.methylation.cov.list,my.group)
+save(my.object,file="my.object")
+load("./my.object")
 # RRBS does not recommend smoothing process
 my.normal<-my.group[grep("^Normal",my.group)]
 my.alzheimer<-my.group[grep("^Al",my.group)]
 DMLTest<- DMLtest(my.object,group1 = my.normal,group2 = my.alzheimer)
 dmls <-callDML(DMLTest,p.threshold = 0.05)
 dmrs <- callDMR(DMLTest,p.threshold = 0.05)
-
-
-
-
-
-
-
-
+###########################
+####  check point##########
+###########################
+save(dmrs,file = "dmrs")##
+load("dmrs")            ##
+###########################
+head(dmrs)
+# annotate gene 
+gene.obj=readTranscriptFeatures("GENE.location.Info.txt")
+gene.annotate<-annotateWithGeneParts(as(dmrs,"GRanges"),gene.obj)
+head(gene.annotate@dist.to.TSS)
+# add annotated gene to 
+new.DMR.v1<-cbind.data.frame(dmrs,gene.annotate@dist.to.TSS[,c(2,3,4)])
 
 
 
