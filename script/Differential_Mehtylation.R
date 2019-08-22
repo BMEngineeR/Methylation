@@ -1,5 +1,5 @@
 suppressMessages(library(methylKit))
-setwd("/BigData/analysis_work/Amer/Amer_run/Sorted_BAM/Change_chr/")
+setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Change_chr/")
 # read in condition file # commentable
 my.condition<-read.table("sample_condition.txt",header = T)
 # make name consistency # commentable
@@ -53,6 +53,7 @@ MyDiff.all<-getMethylDiff(MyDiff,difference=10,qvalue=0.05)
 write.table(MyDiff.all,file="my.diff.meth.txt",row.names = F,quote = F)
 # save differential Methylation file for checkpoint. 
 save(MyDiff,file = "MyDiff.rds")
+load("MyDiff.all.rds")
 # visualize distribution of hypo-meth/hypo-methylated base
 Diff.Meth.report<-diffMethPerChr(MyDiff.all,plot=F,cutoff=0.05,meth.cutoff = 10)
 write.csv(Diff.Meth.report,file = "Diff.Meth.Report.csv",quote = F,row.names = F )
