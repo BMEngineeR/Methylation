@@ -41,7 +41,7 @@ my.data.filtered<-my.data.filtered[abs(my.data.filtered$dist.to.feature)<=1000,]
 my.significant.gene
 
 plot.gene<-function(gene.name="ATG5",...){
-  my.target.gene<-my.data.filtered[grep(gene.name,my.data.filtered$Gene),]
+  my.target.gene<-my.data.filtered[grep(paste0("^",gene.name,"$"),my.data.filtered$Gene),]
   my.chr<-unique(my.target.gene$chr)
   my.start<-my.target.gene$start
   
@@ -97,14 +97,18 @@ plot.gene<-function(gene.name="ATG5",...){
   grid.arrange(p.normal,p.Al)
 }
 my.significant.gene
-plot.gene(gene.name = "ATG16L2")
+plot.gene(gene.name = "ULK2")
 
 
 
 
+for (i in my.significant.gene){
+  jpeg(paste0("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Change_chr/plot/",i,"CpGs_Meth.jpeg"))
+  plot.gene(gene.name = i)
+  dev.off()
+}
 
-
-
+plot.gene(gene.name ="ATG5")
 
 
 
@@ -113,9 +117,11 @@ plot.gene(gene.name = "ATG16L2")
 
 ## coverage check
 my.sample.name<-my.meth.merged@sample.ids
-my.readnumber<-c(33171523,43165280,29397200,46211060,39995359,
-                      25921837,30249793,31428974,35737181,31702113)
+my.readnumber<-c(33171523,43165280,29397200,46211060,39995359,25921837,30249793,31428974,35737181,31702113)
+my.readnumber<-2*my.readnumber
 my.coverage<-150*my.readnumber/3.2/10^9
+
+
 my.report<-rbind(as.character(my.readnumber),as.character(my.coverage))
 colnames(my.report)<-my.sample.name
 rownames(my.report)<-c("reads number","coverage")
