@@ -29,7 +29,7 @@ my.filterd.meth<-filterByCoverage(my.meth,lo.count = 10,lo.perc = NULL,
 my.meth.normalized<-normalizeCoverage(my.filterd.meth)
 my.meth.merged <- unite(my.meth.normalized,destrand = F)
 # MyDiff <- calculateDiffMeth(my.meth.merged)
-# # select significantly differential region. 
+# # select significantly differential region. W
 # MyDiff.all<-getMethylDiff(MyDiff,difference=10,qvalue=0.05)
 my.meth.merged<-as.data.frame(my.meth.merged)
 # read in all data
