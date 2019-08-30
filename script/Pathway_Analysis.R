@@ -2,6 +2,7 @@
 library(clusterProfiler)
 library(AnnotationDbi)
 library(org.Hs.eg.db)
+library(org.Mm.eg.db)
 library(ggplot2)
 ### change DM_snps. csv gene name
 
