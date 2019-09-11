@@ -6,7 +6,8 @@ library(AnnotationDbi)
 library(org.Hs.eg.db)
 library(genomation)
 options(stringsAsFactors = F)
-setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Amer_Fastq/coverage_meth")
+# import pathway which has "MAA4130_V1B_1_S7_L007_P0001_R1_val_1_bismark_hisat2_pe.bismark.cov.gz" from bismark
+setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Amer_Fastq/New_analysis_Bowtie2/coverage_meth")
 # prepressing file, they contain alternative chromosome
 my.filelist<-list.files(pattern = "cov.gz")
 my.filename<-unlist(lapply(strsplit(my.filelist,"_"),"[",1))
@@ -31,7 +32,7 @@ for(i in 1:length(my.filelist)){
   print(paste("finish",my.filelist[i]))
 }
 # separate condtion and group
-my.sample.condition<-read.table("../sample_condition.txt",header = T)
+my.sample.condition<-read.table("../Sorted_Bam//sample_condition.txt",header = T)
 my.sample.condition$Group<-paste0(my.sample.condition$Disease,".",my.sample.condition$NAME)
 my.sample.condition.2<-my.sample.condition[match(gsub("MAA","",my.filename),my.sample.condition$NAME),]
 my.group<-my.sample.condition.2$Group
@@ -40,8 +41,10 @@ my.methylation.cov.list<-list(MAA4130,MAA4308,MAA4382,MAA4414,MAA4494,MAA4617,MA
 # save(my.methylation.cov.list,file = "my.methylation.cov.list")
 # load("my.methylation.cov.list")
 my.object<-makeBSseqData(my.methylation.cov.list,my.group)
+# checkpoint
+
 # save(my.object,file="my.object")
- load("./my.object")
+# load("./my.object")
 # RRBS does not recommend smoothing process
 my.normal<-my.group[grep("^Normal",my.group)]
 my.alzheimer<-my.group[grep("^Al",my.group)]

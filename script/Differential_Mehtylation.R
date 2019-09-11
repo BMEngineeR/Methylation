@@ -1,34 +1,79 @@
+library(clusterProfiler)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+library(org.Mm.eg.db)
+library(ggplot2)
+options(stringsAsFactors = F)
+library(Gviz)
+library(genomation)
+library(dplyr)
+library(org.Hs.eg.db)
+library(gridExtra)
+library(ggthemes)
+library(conflicted)
+# # preprocessing###########################################################
+# suppressMessages(library(methylKit))
+# setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Amer_Fastq/New_analysis_Bowtie2/Sorted_Bam/")
+# # read in condition file # commentable
+# my.condition<-read.table("sample_condition.txt",header = T)
+# my.disease.factor<-factor(my.condition$Disease,labels = c(0,1),levels  = c("Normal","Al"))
+# my.sample.id <- as.list(paste0("MAA",my.condition$NAME))
+# my.treatment <-  as.numeric(as.character(my.disease.factor))
+# # begin with bam 
+# # after running this, please comment 
+
+# my.bam.list<- as.list(my.condition$bam)
+# my.condition$bam<-paste0("MAA",my.condition$NAME,".sort.bam")
+# my.meth<-processBismarkAln(location = my.bam.list,
+#                               sample.id = my.sample.id,assembly = "GRCh38",read.context = "CpG",
+#                               treatment = my.treatment,
+#                               save.folder = getwd())
+# remove alternative chromosome,
+# after running this, please comment
+# my.filelist<-list.files(pattern = ".CpG.txt")
+# my.header<-unlist(lapply(strsplit(my.filelist,"_"),'[[',1))
+# for (i in 1:length(my.filelist)){
+#   x<-read.table(my.filelist[i],header = T)
+#   x$chrBase<-paste0("chr",x$chrBase)
+#   x$chr<-paste0("chr",x$chr)
+#   xx<-x[grep("^chr[1-9,X,Y,MT]",x$chr),]
+#   write.table(xx,
+#               file = paste0(my.header[i],"_CpGs.chr.txt"),
+#               quote = F,
+#               row.names = F,
+#               sep = "\t")
+#   print(i)
+# }
+# # read in data
+#####################################################################
 suppressMessages(library(methylKit))
-setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Change_chr/")
+setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Amer_Fastq/New_analysis_Bowtie2/Sorted_Bam/")
 # read in condition file # commentable
 my.condition<-read.table("sample_condition.txt",header = T)
 # make name consistency # commentable
 rownames(my.condition)<-paste0("MAA",my.condition$NAME,"_CpGs.chr.txt")
 # make order consistency # commentable
-my.condition<-my.condition[match(list.files(pattern = "_CpGs.chr.txt"),row.names(my.condition)),]
+# my.condition<-my.condition[match(list.files(pattern = "_CpGs.chr.txt"),row.names(my.condition)),]
 my.disease.factor<-factor(my.condition$Disease,labels = c(0,1),levels  = c("Normal","Al"))
 # creating Meth object.
-my.filelist<-as.list(list.files(pattern = "CpGs.chr.txt"))
+my.filelist<-as.list(rownames(my.condition))
 my.sample.id <- as.list(paste0("MAA",my.condition$NAME))
 my.treatment <-  as.numeric(as.character(my.disease.factor))
-# my.meth<-processBismarkAln(location = my.filelist,
-#                               sample.id = my.sample.id,assembly = "GRCh38",read.context = "CpG",
-#                               treatment = my.treatment,
-#                               save.folder = getwd())
 my.meth<-methRead(my.filelist,
                   sample.id=my.sample.id,
                   assembly="GRCh38",
                   treatment=my.treatment,
-                  context="CpG"
-)
+                  context="CpG")
+save(my.meth,file = "my.meth.rds")
+load("my.meth.rds")
 # visually showing the methylation status
-par(mfrow=c(2,2))
-for(i in 1:4){
-  getMethylationStats(my.meth[[i]],plot = T,both.strands = F)
-}
-getMethylationStats(my.meth[[1]],plot = T,both.strands = F)
-getCoverageStats(my.meth[[1]],plot = T,both.strands =F)
-# Filtering samples based on the read coverage
+# par(mfrow=c(2,2))
+# for(i in 1:4){
+#   getMethylationStats(my.meth[[i]],plot = T,both.strands = F)
+# }
+# getMethylationStats(my.meth[[1]],plot = T,both.strands = F)
+# getCoverageStats(my.meth[[1]],plot = T,both.strands =F)
+# # Filtering samples based on the read coverage
 
 my.filterd.meth<-filterByCoverage(my.meth,lo.count = 10,lo.perc = NULL,
                                   hi.count = NULL, hi.perc = 99.9)
@@ -49,57 +94,49 @@ PCASamples(my.meth.merged)
 # Find differentially methylated bases or regions
 MyDiff <- calculateDiffMeth(my.meth.merged)
 # select significantly differential region. 
-MyDiff.all<-getMethylDiff(MyDiff,difference=10,qvalue=0.05)
-write.table(MyDiff.all,file="my.diff.meth.txt",row.names = F,quote = F)
+MyDiff.significant<-getMethylDiff(MyDiff,difference=5,qvalue=0.05)
+# save file for later analysis
+
 # save differential Methylation file for checkpoint. 
 save(MyDiff,file = "MyDiff.rds")
-load("MyDiff.all.rds")
-# visualize distribution of hypo-meth/hypo-methylated base
-Diff.Meth.report<-diffMethPerChr(MyDiff.all,plot=F,cutoff=0.05,meth.cutoff = 10)
-write.csv(Diff.Meth.report,file = "Diff.Meth.Report.csv",quote = F,row.names = F )
+save(MyDiff.significant,file = "MyDiff_significant.rds")
+###################################################
+#loading data#####################################
+load("MyDiff.rds")
+load("MyDiff_significant.rds")
 # annotation
 library(genomation)
 gene.obj=readTranscriptFeatures("GENE.location.Info.txt")
 diff_gene<-annotateWithGeneParts(as(MyDiff,"GRanges"),gene.obj)
-# cpg.obj<-readFeatureFlank("hgTables.CpGi.txt",feature.flank.name=c("CpGi","shores"))
-# diffCpGann<-annotateWithFeatureFlank(as(MyDiff.all,"GRanges"),
-#                                     cpg.obj$CpGi,cpg.obj$shores,
-#                                     feature.name="CpGi",flank.name="shores")
-# create differential matrix(SNPs)
-# for(i in 1:dim(my.Diff.anno)[1]){
-#   tmp<-my.Diff.anno$target.row[i+1]-my.Diff.anno$target.row[i]
-#   if(tmp==1){print(i)} else{break()}
-# }
+
 my.Diff.anno<-diff_gene@dist.to.TSS
 my.Diff.meth<-as.data.frame(MyDiff@.Data)
 colnames(my.Diff.meth)<-c("chr","start","end","strand","pvalue",'qvalue',"difference")
 my.Diff.meth.clean<-my.Diff.meth[grep("^chr[1-9,X,Y,MT]",my.Diff.meth$chr),]
 
 my.Diff.final<- cbind(my.Diff.meth.clean,my.Diff.anno[,c(2,3)])
-# group 1(treatment) - group 0(control) : if treatment > control, then difference in  my.Diff.final should be postive number. 
+gene.refseq.name<-unlist(sapply(strsplit(my.Diff.final$feature.name,"[.]"),'[[',1))
+gene.Symbol<-AnnotationDbi::select(org.Hs.eg.db,keys = gene.refseq.name,
+                                   keytype = "REFSEQ",
+                                   columns = "SYMBOL")
+x.new<-cbind.data.frame(my.Diff.final,feature.name=gene.refseq.name,Gene=gene.Symbol$SYMBOL)
+# generatecsv
+write.csv(x.new,file = "DM_SNP_all.csv",quote = F,row.names = F)
 
-#write.table(diff_gene@dist.to.TSS,file = "DM.txta")
+
+# group 1(treatment) - group 0(control) : if treatment > control, then difference in  my.Diff.final should be postive number. 
+#################################################################
+#####quality control and general situation#######################
+#################################################################
+diff_gene<-annotateWithGeneParts(as(MyDiff,"GRanges"),gene.obj)
 head(getAssociationWithTSS(diff_gene))
+# show basic statisitc
+getTargetAnnotationStats(diff_gene,percentage=TRUE,precedence=TRUE)
 getTargetAnnotationStats(diff_gene,percentage = T,precedence = T)
+# plot each region percentage
 plotTargetAnnotation(diff_gene,precedence=TRUE,
                      main="differential methylation annotation")
-# debug for what hell happen?? why the row has different number? 
-# because they introduced the alternative chromesome, no annotation file for that. 
-# for(i in 19917:21176){
-#   tmp_d1<-my.Diff.meth$start[i+1]-my.Diff.meth$start[i]
-#   tmp_d2<-my.Diff.anno$dist.to.feature[i+1]- my.Diff.anno$dist.to.feature[i]
-#   tmp_d3<-my.Diff.anno$target.row[i+1]- my.Diff.anno$target.row[i]
-#   if (abs(tmp_d3)==1){
-#     print(paste("ok for",i))
-#   } else{
-#     print(paste("warning for",i))
-#     break()
-#     }
-# }
-## pathway enrichment.
-setwd("/BigData/analysis_work/Amer/Amer_run/Sorted_BAM/Change_chr/report/")
-# my.Diff.final<-read.csv("DM_SNP.csv",header = T,stringsAsFactors = F)
+
+
 hist(my.Diff.final$dist.to.feature,breaks = 1000,col = "skyblue",main = "Distance to TSS",xlim = c(-100000,100000),xlab = "distance")
-# my.promoter.table<-my.Diff.final[which(abs(my.Diff.final$dist.to.feature)<=1000),]
-# treat.promoter.table<-my.promoter.table[which(my.promoter.table$difference>0),]
-# treat.promoter.gene<-as.character(treat.promoter.table$feature.name)
+

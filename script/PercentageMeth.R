@@ -101,7 +101,7 @@ plot.gene<-function(gene.name="ATG5",...){
 gene.region.list<-read.table("GeneRegion.txt")
 colnames(gene.region.list)<- c("name","region")
 
-
+gene.region=gene.region.list
 
   
 plot.region<-function(Gene.Region=gene.region,index=2,...){
@@ -187,6 +187,90 @@ plot.region<-function(Gene.Region=gene.region,index=2,...){
   grid.arrange(p.normal,p.Al)
 }
 plot.region(Gene.Region = gene.region,index = 3)
+
+plot.region<-function(Gene.Region=gene.region,index=2,...){
+  # split gene region to chrome, start, end
+  tmp.gene.info<-Gene.Region[index,]
+  # gene name
+  tmp.gene.name<-as.character(tmp.gene.info[1])
+  tmp.gene.region<-as.character(tmp.gene.info[2])
+  # chromosome
+  tmp.gene.chr<-strsplit(tmp.gene.region,":")[[1]][1]
+  tmp.gene.StartToEnd<-strsplit(tmp.gene.region,":")[[1]][2]
+  # start
+  tmp.gene.start<-strsplit(tmp.gene.StartToEnd,"-")[[1]][1]
+  # end
+  tmp.gene.end<-strsplit(tmp.gene.StartToEnd,"-")[[1]][2]
+  
+  my.merged.FilterByChr<-my.meth.merged[grep(paste0("^",tmp.gene.chr,"$"),my.meth.merged$chr),]
+  tmp.gene.start.iter<-as.numeric(tmp.gene.start)
+  while(!tmp.gene.start.iter %in% my.merged.FilterByChr$start){
+    tmp.gene.start.iter<-tmp.gene.start.iter-1
+    # print(tmp.gene.start.iter)
+  }
+  
+  tmp.gene.start.index<-grep(tmp.gene.start.iter,my.merged.FilterByChr$start)
+  tmp.gene.end.iter<-as.numeric(tmp.gene.end)
+  while(!tmp.gene.end.iter %in% my.merged.FilterByChr$start){
+    tmp.gene.end.iter<-tmp.gene.end.iter+1
+    # print(tmp.gene.end.iter)
+  } 
+  # get location of region end in my.meth.merged 
+  tmp.gene.end.index<-grep(tmp.gene.end.iter,my.merged.FilterByChr$start)
+  # region index is aim location 
+  region.index<-seq(tmp.gene.start.index,tmp.gene.end.index)
+  my.merged.FilterByStart<-my.merged.FilterByChr[region.index,]
+  
+  my.condition.table<-cbind.data.frame(ID=my.meth.merged@sample.ids,Condition=my.meth.merged@treatment)
+  my.condition.table.sort<-my.condition.table[order(my.condition.table$Condition),]
+  match.index<-match(my.condition.table.sort$ID,my.condition.table$ID)
+  # match.index.new<-c(1,2,5,6,7,8,9,10,17,18,19,23,24,25,32,33,34,11,12,13,14,15,16,20,21,22,26,27,28,29,30,31)
+  # my.plot.table<-my.merged.FilterByStart[,match.index.new]
+  normal.mean.coverage <-rowMeans(getData(my.merged.FilterByStart)[,3*match.index[1:5]+2])
+  normal.mean.Cs<-rowMeans(getData(my.merged.FilterByStart)[,3*match.index[1:5]+3])
+  al.mean.coverage <-rowMeans(getData(my.merged.FilterByStart)[,3*match.index[6:10]+2])
+  al.mean.Cs<-rowMeans(getData(my.merged.FilterByStart)[,3*match.index[6:10]+3])
+  normal.percent.Cs<-(normal.mean.Cs/normal.mean.coverage)*100
+  al.percent.Cs<-(al.mean.Cs/al.mean.coverage)*100
+  print("ploting...")
+  my.plot.df<-cbind.data.frame(chr=as.array(as.character(getData(my.merged.FilterByStart)[,1])),
+                               start=as.array(as.numeric(getData(my.merged.FilterByStart)[,2])),
+                               al.mean.Cs=al.mean.Cs,
+                               al.mean.Ts=al.mean.coverage-al.mean.Cs,
+                               al.mean.coverage=al.mean.coverage,
+                               al.per=al.percent.Cs,
+                               normal.mean.Cs=normal.mean.Cs,
+                               normal.mean.Ts=normal.mean.coverage- normal.mean.Cs,
+                               normal.mean.coverage=normal.mean.coverage,
+                               normal.per=normal.percent.Cs)
+  my.plot.df$x<-my.plot.df$start- min(my.plot.df$start)+1
+  #my.plot.df$y<-rep(100,nrow(my.plot.df))
+  
+  p.normal <- ggplot(my.plot.df,aes(x=start,y=al.per))+
+    geom_segment(aes(x=start,y=0,xend=start,yend=100),color="#20639B",size=1,data=my.plot.df)+
+    geom_segment(aes(x=start,y=0,xend=start,yend=normal.per),color="#C70039",size=1,data=my.plot.df)+
+    theme(panel.background = element_rect(fill="white", colour="white", size=0.1, 
+                                          linetype="blank", color="white"),
+          plot.title = element_text(size=11),
+          axis.text.x = element_blank())+
+    geom_hline(yintercept=c(0,50,100), linetype="solid", color="black", size=0.5)+
+    labs(title=paste0(tmp.gene.name," Gene Methylation",
+                      ": (",tmp.gene.chr," : ",tmp.gene.start,"-",tmp.gene.end," )"),
+         x ="", y = "Normal")
+  
+  
+  p.Al <- ggplot(my.plot.df,aes(x=start,y=al.per))+
+    geom_segment(aes(x=start,y=0,xend=start,yend=100),color="#20639B",size=1,data=my.plot.df)+
+    geom_segment(aes(x=start,y=0,xend=start,yend=al.per),color="#C70039",size=1,data=my.plot.df)+
+    theme(panel.background = element_rect(fill="white", colour="white", size=0.1, 
+                                          linetype="blank", color="white"))+
+    geom_hline(yintercept=c(0,50,100), linetype="solid", color="black", size=0.5)+
+    labs(title="",
+         x ="", y = "Alzheimer")
+  
+  grid.arrange(p.normal,p.Al)
+}
+
 for (i in 1:nrow(gene.region)){
   svg(paste0("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Change_chr/plot/BaseOnRegion/",gene.region$name[i],"CpGs_Meth.svg"),height = 10,width = 10)
   plot.region(Gene.Region = gene.region,index = i)

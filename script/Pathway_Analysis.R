@@ -4,20 +4,15 @@ library(AnnotationDbi)
 library(org.Hs.eg.db)
 library(org.Mm.eg.db)
 library(ggplot2)
-### change DM_snps. csv gene name
-
-gene.refseq.name<-unlist(sapply(strsplit(my.Diff.final$feature.name,"[.]"),'[[',1))
-gene.Symbol<-AnnotationDbi::select(org.Hs.eg.db,keys = gene.refseq.name,
-                                   keytype = "REFSEQ",
-                                   columns = "SYMBOL")
-x.new<-cbind.data.frame(my.Diff.final,feature.name=gene.refseq.name,Gene=gene.Symbol$SYMBOL)
-write.csv(x.new,file = "DM_SNP_all.csv",quote = F,row.names = F)
+# setworking directory
+setwd("/fs/project/PAS1475/Yuzhou_Chang/Methylation/Amer_Fastq/New_analysis_Bowtie2/Sorted_Bam/")
+### read in file.
 x.new<-read.csv("DM_SNP_all.csv",header = T,stringsAsFactors = F)
 # add filter qvalue<0.05
 x.new<-x.new[x.new$qvalue<=0.05,]
 # select feature.
 # up regulate
-# add filter, differen > 10
+# add filter, differen > 10, alzheimer significant 
 my.up.coordinate<-intersect(which(x.new$difference>= 10),which(abs(x.new$dist.to.feature)<=1000))
 my.gene.up<-unique(x.new$Gene[my.up.coordinate])
 my.Go.CC.up<- enrichGO(gene=my.gene.up,OrgDb = org.Hs.eg.db,
@@ -41,11 +36,12 @@ my.KEGG.up<-enrichKEGG(gene=my.entrize.id.up$ENTREZID,organism = "hsa",
                        keyType = "kegg",pAdjustMethod = "BH",
                        pvalueCutoff  = 0.01,
                        qvalueCutoff  = 0.05)
-write.table(my.Go.CC@result,file = "GO_enrichment_CC_up.csv",quote = F,row.names = F,sep = ";")
-write.table(my.Go.MF@result,file = "GO_enrichment_MF_up.csv",quote = F,row.names = F,sep=";")
-write.table(my.Go.BP@result,file = "GO_enrichment_BP_up.csv",quote = F,row.names = F,sep=";")
+write.table(my.Go.CC.up@result,file = "GO_enrichment_CC_AL.csv",quote = F,row.names = F,sep = ";")
+write.table(my.Go.MF.up@result,file = "GO_enrichment_MF_AL.csv",quote = F,row.names = F,sep=";")
+write.table(my.Go.BP.up@result,file = "GO_enrichment_BP_AL.csv",quote = F,row.names = F,sep=";")
+write.table(my.KEGG.up@result,file = "KEGG_enrichment_AL.csv",quote = F,row.names = F,sep=";")
 # my.Go.BP@result$Description[37]
-# down regulate
+# add filter, differen < -10, normal significant 
 my.down.corrdinate<-intersect(which(x.new$difference< (-10)),which(abs(x.new$dist.to.feature)<=1000))
 my.gene.down<-unique(x.new$Gene[my.down.corrdinate])
 my.Go.CC.down<- enrichGO(gene=my.gene.down,OrgDb = org.Hs.eg.db,
@@ -69,9 +65,10 @@ my.KEGG.down<-enrichKEGG(gene=my.entrize.id.down$ENTREZID,organism = "hsa",
                        keyType = "kegg",pAdjustMethod = "BH",
                        pvalueCutoff  = 0.01,
                        qvalueCutoff  = 0.05)
-write.table(my.Go.CC@result,file = "GO_enrichment_CC_down.csv",quote = F,row.names = F,sep = ";")
-write.table(my.Go.MF@result,file = "GO_enrichment_MF_down.csv",quote = F,row.names = F,sep=";")
-write.table(my.Go.BP@result,file = "GO_enrichment_BP_down.csv",quote = F,row.names = F,sep=";")
+write.table(my.Go.CC.down@result,file = "GO_enrichment_CC_Normal.csv",quote = F,row.names = F,sep = ";")
+write.table(my.Go.MF.down@result,file = "GO_enrichment_MF_Normal.csv",quote = F,row.names = F,sep=";")
+write.table(my.Go.BP.down@result,file = "GO_enrichment_BP_Normal.csv",quote = F,row.names = F,sep=";")
+write.table(my.KEGG.down@result,file = "KEGG_enrichment_Normal.csv",quote = F,row.names = F,sep=";")
 # visualized in ggplot2
 PlotPathway<-function(table1=NULL,table2=NULL,condition=c("event","normal"),cut.padj=0.05,PathwayType="KEGG",top=50,...){
   my.datafra1<-as.data.frame(table1@result)
@@ -91,10 +88,10 @@ PlotPathway<-function(table1=NULL,table2=NULL,condition=c("event","normal"),cut.
   suppressWarnings(p)
 }
 
-PlotPathway(table1 = my.Go.BP.up,table2 = my.Go.BP.down,condition=c("Alzheimer","Normal"),top = 100,PathwayType = "GO_BP")
-
-
-
+PlotPathway(table1 = my.Go.BP.up,table2 = my.Go.BP.down,condition=c("Alzheimer","Normal"),top = 50,PathwayType = "GO_BP")
+PlotPathway(table1 = my.Go.CC.up,table2 = my.Go.CC.down,condition=c("Alzheimer","Normal"),top = 50,PathwayType = "GO_CC")
+PlotPathway(table1 = my.Go.MF.up,table2 = my.Go.MF.down,condition=c("Alzheimer","Normal"),top = 50,PathwayType = "GO_MF")
+PlotPathway(table1 = my.KEGG.up,table2 = my.KEGG.down,condition=c("Alzheimer","Normal"),top = 50,PathwayType = "KEGG")
 
 
 
